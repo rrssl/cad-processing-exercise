@@ -1,6 +1,7 @@
 import argparse
 
 from OCC.Display.WebGl import threejs_renderer
+from importers import import_file
 
 
 def main():
@@ -10,11 +11,10 @@ def main():
     parser.add_argument('path', type=str, help="file location")
     args = parser.parse_args()
 
-    path = args['path']
-    # TODO: Load file...
+    shp = import_file(args.path)
 
     display = threejs_renderer.ThreejsRenderer()
-    # TODO: Add 3D model...
+    display.DisplayShape(shp)
     display.render()
 
 

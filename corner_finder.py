@@ -47,7 +47,7 @@ def get_face_plane(face):
 
 
 def get_face_normal_at_vertex(face, vertex):
-    """Get the face normal at this vertex.
+    """Get the face normal at this vertex. The normal points outwards.
 
     The vertex is assumed to belong to this face.
     """
@@ -117,9 +117,12 @@ def find_internal_fillet_corners(model):
         if radius >= MAX_FILLET_RADIUS:
             continue
         # 3. Check that this is an interior corner.
-        # We use the following criterion: each side face is translated along
-        # its normal by the value of the radius. If they intersect, then it is
-        # an interior corner.
+        # We use the following method:
+        # a. Compute the shortest distance between the side faces, D.
+        # b. Translate each side face along its outwards normal, and recompute
+        # the shortest distance between the now translated side faces, D'.
+        # c. If the faces got closer (D > D'), then it is an internal corner.
+        # ---
         # Compute each face's normal at some point along their respective edge.
         f1, f1_edge = side_faces_with_edge[0]
         f1_vertex = next(model_explorer.vertices_from_edge(f1_edge))
@@ -127,15 +130,16 @@ def find_internal_fillet_corners(model):
         f2, f2_edge = side_faces_with_edge[1]
         f2_vertex = next(model_explorer.vertices_from_edge(f2_edge))
         n2 = get_face_normal_at_vertex(f2, f2_vertex)
+        # Compute the initial shortest distance between the side faces.
+        dist = BRepExtrema_DistShapeShape(f1, f2).Value()
         # Get a copy of each face translated along their respective normals.
-        # We need to translate by at leat the fillet's radius.
-        tr_dist = radius
+        tr_dist = 1e-1
         f1_tr = get_translated_face(f1, gp_Vec(n1)*tr_dist)
         f2_tr = get_translated_face(f2, gp_Vec(n2)*tr_dist)
-        # Look for an intersection.
-        dist = BRepExtrema_DistShapeShape(f1_tr, f2_tr).Value()
-        if dist == 0:
-            print("Found an internal fillet corner")
+        # Compute the new shortest distance between the side faces.
+        dist_tr = BRepExtrema_DistShapeShape(f1_tr, f2_tr).Value()
+        # Compare the distances.
+        if dist > dist_tr:
             corner_faces.append(face)
     return corner_faces
 

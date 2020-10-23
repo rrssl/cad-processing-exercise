@@ -1,4 +1,3 @@
-import argparse
 import uuid
 import os
 import sys
@@ -7,11 +6,10 @@ from OCC.Core.Tesselator import ShapeTesselator
 from OCC.Display.WebGl import threejs_renderer
 from OCC.Display.WebGl.threejs_renderer import export_edgedata_to_json
 from OCC.Display.WebGl.threejs_renderer import THREEJS_RELEASE
-from OCC.Extend.TopologyUtils import is_edge, is_wire, discretize_edge, discretize_wire
-
-from corner_finder import find_internal_edge_corners
-from corner_finder import find_internal_fillet_corners
-from importers import import_file
+from OCC.Extend.TopologyUtils import is_edge
+from OCC.Extend.TopologyUtils import is_wire
+from OCC.Extend.TopologyUtils import discretize_edge
+from OCC.Extend.TopologyUtils import discretize_wire
 
 
 # The code below is mostly coped from pythonOCC, with changes to improve the
@@ -287,21 +285,3 @@ class Viewer(threejs_renderer.ThreejsRenderer):
                 # store this edge hash, with black color
                 self._3js_edges[edge_hash] = [(0, 0, 0), line_width]
         return self._3js_shapes, self._3js_edges
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Visualise and manipulate CAD files."
-    )
-    parser.add_argument('path', type=str, help="file location")
-    args = parser.parse_args()
-
-    shp = import_file(args.path)
-
-    display = Viewer()
-    display.DisplayShape(shp, export_edges=True, transparency=0.1)
-    display.render()
-
-
-if __name__ == "__main__":
-    main()

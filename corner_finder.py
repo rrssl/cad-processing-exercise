@@ -24,6 +24,8 @@ from OCC.Extend.TopologyUtils import TopologyExplorer
 MAX_FILLET_RADIUS = 5.
 # Minimum angle between the faces of an edge to qualify as a corner
 MIN_ANGLE_DEGREES = 5.
+# How much faces are translated to compute the internal corner check
+TR_DIST_FOR_INTERNALITY_CHECK = 1e-1
 
 
 def get_edge_line(edge):
@@ -145,7 +147,7 @@ def find_internal_fillet_corners(model):
         # Compute the initial shortest distance between the side faces.
         dist = BRepExtrema_DistShapeShape(f1, f2).Value()
         # Get a copy of each face translated along their respective normals.
-        tr_dist = 1e-1
+        tr_dist = TR_DIST_FOR_INTERNALITY_CHECK
         f1_tr = get_translated_face(f1, gp_Vec(n1)*tr_dist)
         f2_tr = get_translated_face(f2, gp_Vec(n2)*tr_dist)
         # Compute the new shortest distance between the side faces.
@@ -194,8 +196,7 @@ def find_internal_edge_corners(model):
         if degrees(n1.Angle(n2)) < MIN_ANGLE_DEGREES:
             continue
         # Get a copy of each face translated along their respective normals.
-        # No need to translate by a lot, as the faces share an edge.
-        tr_dist = 1e-1
+        tr_dist = TR_DIST_FOR_INTERNALITY_CHECK
         f1_tr = get_translated_face(f1, gp_Vec(n1)*tr_dist)
         f2_tr = get_translated_face(f2, gp_Vec(n2)*tr_dist)
         # If translated faces intersect, then it is a interior corner.

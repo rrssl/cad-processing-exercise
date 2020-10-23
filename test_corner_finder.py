@@ -15,7 +15,7 @@ class TestCornerFinder(unittest.TestCase):
     def test_plane2cylinder_edge_corner(self):
         model = import_file("assets/simple-with-cyl.step")
         edges = find_internal_edge_corners(model)
-        self.assertEqual(len(edges), 5)
+        self.assertEqual(len(edges), 4)
 
     def test_plane2plane_fillet_corner(self):
         model = import_file("assets/simple-rad1int1ext.step")

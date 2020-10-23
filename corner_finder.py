@@ -1,3 +1,5 @@
+from math import degrees
+
 from OCC.Core.gp import gp_Trsf
 from OCC.Core.gp import gp_Vec
 from OCC.Core.BRep import BRep_Tool_Continuity
@@ -9,6 +11,7 @@ from OCC.Core.BRepAdaptor import BRepAdaptor_Surface
 from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Transform
 from OCC.Core.BRepExtrema import BRepExtrema_DistShapeShape
 from OCC.Core.BRepLProp import BRepLProp_SLProps
+from OCC.Core.Geom import Geom_Curve
 from OCC.Core.Geom import Geom_CylindricalSurface
 from OCC.Core.Geom import Geom_Line
 from OCC.Core.Geom import Geom_Plane
@@ -17,7 +20,10 @@ from OCC.Core.TopAbs import TopAbs_REVERSED
 from OCC.Extend.TopologyUtils import TopologyExplorer
 # from OCC.Extend.TopologyUtils import dump_topology_to_string
 
+# Maximum radius of a fillet to qualify as a corner
 MAX_FILLET_RADIUS = 5.
+# Minimum angle between the faces of an edge to qualify as a corner
+MIN_ANGLE_DEGREES = 5.
 
 
 def get_edge_line(edge):
@@ -26,8 +32,13 @@ def get_edge_line(edge):
     If the edge is not a line segment, None is returned.
     """
     # While BRep_Tool_Surface returns a Geom_Surface directly,
-    # BRep_Tool_Curve returns a tuple (Geom_Curve, float, float).
-    return Geom_Line.DownCast(BRep_Tool_Curve(edge)[0])
+    # BRep_Tool_Curve returns a tuple (Geom_Curve, float, float) if the edge
+    # can be parametrised as a curve, and a tuple (float, float) otherwise.
+    curve = BRep_Tool_Curve(edge)[0]
+    if type(curve) is Geom_Curve:
+        return Geom_Line.DownCast(curve)
+    else:
+        return None
 
 
 def get_face_cylinder(face):
@@ -160,6 +171,10 @@ def find_internal_edge_corners(model):
     corner_edges = []
     # Iterate over edges
     for edge in model_explorer.edges():
+        # We assume that edge corners are straight lines.
+        line = get_edge_line(edge)
+        if line is None:
+            continue
         # Get the 2 faces sharing this edge.
         try:
             f1, f2 = model_explorer.faces_from_edge(edge)
@@ -173,6 +188,10 @@ def find_internal_edge_corners(model):
         edge_vertex = next(model_explorer.vertices_from_edge(edge))
         n1 = get_face_normal_at_vertex(f1, edge_vertex)
         n2 = get_face_normal_at_vertex(f2, edge_vertex)
+        # Although the faces are not differentiable at the edge, they might
+        # still be very close. Discard this edge if the normals are too close.
+        if degrees(n1.Angle(n2)) < MIN_ANGLE_DEGREES:
+            continue
         # Get a copy of each face translated along their respective normals.
         # No need to translate by a lot, as the faces share an edge.
         tr_dist = 1e-1
@@ -181,6 +200,5 @@ def find_internal_edge_corners(model):
         # If translated faces intersect, then it is a interior corner.
         dist = BRepExtrema_DistShapeShape(f1_tr, f2_tr).Value()
         if dist < 1e-6:
-            print("Found an internal edge corner")
             corner_edges.append(edge)
     return corner_edges

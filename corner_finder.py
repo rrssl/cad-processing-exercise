@@ -88,12 +88,23 @@ def get_translated_face(face, tr):
 
 
 def find_internal_fillet_corners(model):
+    """Find the internal fillet corners in a TopoDS_Shape model.
+
+    Returns a list of TopoDS_Face, each corresponding to one fillet corner.
+    We assume the following definition: a fillet corner is a cylinder section
+    that connects two faces with straight edges in a differentiable way.
+
+    To determine if a fillet corner between two faces is internal, we use the
+    following method:
+      a. Compute the shortest distance between the two side faces, D.
+      b. Translate each side face along its outwards normal, and recompute
+         the shortest distance between the now translated side faces, D'.
+      c. If the faces got closer (D > D'), then it is an internal corner.
+    """
     model_explorer = TopologyExplorer(model)
     corner_faces = []
     for face in model_explorer.faces():
         # 1. Check if the face is a fillet corner.
-        # A fillet corner is a cylinder section that connects two faces with
-        # straight edges and a differentiable boundary.
         fillet = get_face_cylinder(face)
         if fillet is None:
             continue
@@ -131,12 +142,6 @@ def find_internal_fillet_corners(model):
         if radius >= MAX_FILLET_RADIUS:
             continue
         # 3. Check that this is an interior corner.
-        # We use the following method:
-        # a. Compute the shortest distance between the side faces, D.
-        # b. Translate each side face along its outwards normal, and recompute
-        # the shortest distance between the now translated side faces, D'.
-        # c. If the faces got closer (D > D'), then it is an internal corner.
-        # ---
         # Compute each face's normal at some point along their respective edge.
         f1, f1_edge = side_faces_with_edge[0]
         f1_vertex = next(model_explorer.vertices_from_edge(f1_edge))
@@ -159,17 +164,26 @@ def find_internal_fillet_corners(model):
 
 
 def find_internal_edge_corners(model):
-    # For edge corners, there are several ways to check for internality.
-    # A first method would be to find a point on each side face, close to the
-    # edge but not exactly on it, and then compute
-    #   dot = (x2 - x1).Dot(n1)
-    # If dot > 0, then it is an internal edge.
-    # The tricky part is computing the point on each side face. It cannot be
-    # anywhere on the face, because the face might not be convex.
-    # A second method (implemented here) avoids relying on a specific point.
-    # Instead, each side face is translated (by a small amount) along its
-    # outwards normal. If the translated faces intersect, then we have an
-    # internal corner.
+    """Find the internal edge corners in a TopoDS_Shape model.
+
+    Returns a list of TopoDS_Edge, each corresponding to one edge corner.
+    We assume the following definition: an edge corner is a line segment
+    that connects two faces at an angle (see MIN_ANGLE_DEGREES).
+
+    To determine if an edge corner between two faces is internal, we use the
+    following method:
+      a. Translate each face along its outwards normal, and compute the
+         shortest distance between the translated faces D.
+      b. If D is 0, the translated faces intersect, and the corner is internal.
+
+    NB: another method would be to find a point on each side face, close to the
+    edge but not exactly on it, and then compute
+      dot = (x2 - x1).Dot(n1)
+    where n1 is the outwards normal to the first face.
+    If dot > 0, then it is an internal edge.
+    The tricky part would be computing the right point on each side face. It
+    cannot be anywhere on the face, because the face might not be convex.
+    """
     model_explorer = TopologyExplorer(model)
     corner_edges = []
     # Iterate over edges

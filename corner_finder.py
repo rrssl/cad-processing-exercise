@@ -67,7 +67,8 @@ def get_face_normal_at_vertex(face, vertex):
         BRepAdaptor_Surface(face),
         vertex_uv.X(),
         vertex_uv.Y(),
-        2, 1e-6
+        2,  # Sometimes normal computation needs degree 2 properties
+        1e-6
     )
     normal = slprops.Normal()
     if face.Orientation() == TopAbs_REVERSED:
